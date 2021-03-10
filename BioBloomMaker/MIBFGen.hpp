@@ -46,10 +46,11 @@ public:
 			m_kmerSize(kmerSize), m_expectedEntries(numElements), m_fileNames(filenames) {
 		//Instantiate dense hash map
 		m_ids.push_back(""); //first entry is empty
+		m_start_pos.push_back(0);
 		//dense hash maps take POD, and strings need to live somewhere
 		m_nameToID.set_empty_key(m_ids[0]);
 		size_t counts = 0;
-
+		std::cout << "here 01" << std::endl;
 		if (opt::idByFile) {
 			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 				m_ids.push_back(m_fileNames[i].substr(
@@ -84,6 +85,7 @@ public:
 				gzclose(fp);
 			}
 		} else {
+			unsigned prev_total_length = 0;
 			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 				gzFile fp;
 				fp = gzopen(m_fileNames[i].c_str(), "r");
@@ -94,12 +96,16 @@ public:
 				}
 				kseq_t *seq = kseq_init(fp);
 				int l;
+				std::cout << "here 02" << std::endl;
 				for (;;) {
 					l = kseq_read(seq);
 					if (l >= 0) {
 						m_ids.push_back(string(seq->name.s, seq->name.l));
 						m_nameToID[m_ids.back()] = m_ids.size() - 1;
 						counts += seq->seq.l - m_kmerSize + 1;
+						//m_start_pos[m_nameToID[m_ids.back()]] = prev_total_length;
+						m_start_pos.push_back(prev_total_length);
+						prev_total_length += seq->seq.l;
 					} else {
 						kseq_destroy(seq);
 						break;
@@ -171,7 +177,8 @@ public:
 					}
 					if (l >= 0) {
 						H itr = hashIterator<H>(sequence, ssVal);
-						miBFCS.insertMIBF(*miBF, itr, m_nameToID[name]);
+						//miBFCS.insertMIBF(*miBF, itr, m_nameToID[name], m_start_pos[m_nameToID[name]]);
+						miBFCS.insertMIBF(*miBF, itr, m_start_pos[m_nameToID[name]]);
 					} else {
 						break;
 					}
@@ -209,7 +216,8 @@ public:
 					}
 					if (l >= 0) {
 						H itr = hashIterator<H>(sequence, ssVal);
-						miBFCS.insertSaturation(*miBF, itr, m_nameToID[name]);
+						//miBFCS.insertSaturation(*miBF, itr, m_nameToID[name], m_start_pos[m_nameToID[name]]);
+						miBFCS.insertSaturation(*miBF, itr, m_start_pos[m_nameToID[name]]);
 					} else {
 						break;
 					}
@@ -236,7 +244,8 @@ public:
 					}
 					if (l >= 0) {
 						H itr = hashIterator<H>(sequence, ssVal);
-						miBFCS.insertMIBF(*miBF, itr, m_nameToID[name]);
+						//miBFCS.insertMIBF(*miBF, itr, m_nameToID[name], m_start_pos[m_nameToID[name]]);
+						miBFCS.insertMIBF(*miBF, itr, m_start_pos[m_nameToID[name]]);
 					} else {
 						break;
 					}
@@ -268,7 +277,8 @@ public:
 					}
 					if (l >= 0) {
 						H itr = hashIterator<H>(sequence, ssVal);
-						miBFCS.insertSaturation(*miBF, itr, m_nameToID[name]);
+						//miBFCS.insertSaturation(*miBF, itr, m_nameToID[name], m_start_pos[m_nameToID[name]]);
+						miBFCS.insertSaturation(*miBF, itr, m_start_pos[m_nameToID[name]]);
 					} else {
 						break;
 					}
@@ -312,6 +322,8 @@ private:
 	size_t m_expectedEntries;
 	vector<string> m_fileNames;
 	vector<string> m_ids;
+	vector<unsigned> m_start_pos;
+	//google::dense_hash_map<ID, unsigned> m_start_pos;
 	google::dense_hash_map<string, ID> m_nameToID;
 
 	template<typename H>
